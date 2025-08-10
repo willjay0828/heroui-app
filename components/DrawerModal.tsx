@@ -80,10 +80,10 @@ const DrawerModal = forwardRef<{ handleOpen: () => void }, {}>((props, ref) => {
               <Input
                 className="w-full cal-input"
                 startContent={
-                  <button onClick={handleDecrease}>-</button>
+                  <button className="w-8 h-full text-[1rem]" onClick={handleDecrease}>-</button>
                 }
                 endContent={
-                  <button onClick={handleAdd}>+</button>
+                  <button className="w-8 h-full text-[1rem]" onClick={handleAdd}>+</button>
                 }
                 type="text"
                 size="lg"
