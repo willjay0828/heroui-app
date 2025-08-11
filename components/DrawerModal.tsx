@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useState } from "react";
+import React, { forwardRef, useImperativeHandle, useState, useCallback, memo } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -10,92 +10,115 @@ import {
   Input,
 } from "@heroui/react";
 
-// 让父组件可以通过ref调用handleOpen
+// 常量抽离
+const FLAVOR_LIST = [
+  { type: 1, name: 'Oolong tea' },
+  { type: 2, name: 'Electric Blue Razz' },
+  { type: 3, name: 'Frosty Strawbreeze' }
+];
+
+const NICOTINE_LIST = [
+  { type: 1, name: '0%' },
+  { type: 2, name: '2%' }
+];
+
+const INVENTORY = 100;
+
 const DrawerModal = forwardRef<{ handleOpen: () => void }, {}>((props, ref) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   useImperativeHandle(ref, () => ({
     handleOpen: onOpen,
-  }));
+  }), [onOpen]);
 
-  const flavorList = [
-    { type: 1, name: 'Oolong tea' },
-    { type: 2, name: 'Electric Blue Razz' },
-    { type: 3, name: 'Frosty Strawbreeze' }
-  ];
-  const [flavorActive, setFlavorActive] = useState(1);
-
-  const nicotineList = [
-    { type: 1, name: '0%' },
-    { type: 2, name: '2%' }
-  ];
-  const [nicotineActive, setNicotineActive] = useState(1);
-
-  // 新增数量 state，默认值为 0
+  const [flavorActive, setFlavorActive] = useState(FLAVOR_LIST[0].type);
+  const [nicotineActive, setNicotineActive] = useState(NICOTINE_LIST[0].type);
   const [quantity, setQuantity] = useState(0);
 
-  // 减少数量
-  const handleDecrease = () => {
-    setQuantity((prev) => (prev > 0 ? prev - 1 : 0));
-  };
-   // 增加数量
-   const handleAdd = () => {
-    setQuantity((prev) => prev + 1);
-  };
+  // 优化回调
+  const handleDecrease = useCallback(() => {
+    setQuantity(prev => Math.max(prev - 1, 0));
+  }, []);
+
+  const handleAdd = useCallback(() => {
+    setQuantity(prev => prev + 1);
+  }, []);
+
+  // flavor/nicotine 按钮渲染抽离
+  const renderOptionButtons = useCallback(
+    (
+      list: { type: number; name: string }[],
+      active: number,
+      setActive: React.Dispatch<React.SetStateAction<number>>
+    ) => (
+      <div className="flex flex-wrap gap-[.5rem]">
+        {list.map((item) => (
+          <Button
+            key={item.type}
+            className={`bg-[#212122] text-[#E6EBEC] w-[calc(50%-0.25rem)] border border-solid ${
+              active === item.type ? "border-[#FF4C33] text-[#FF4C33]" : "border-[#212122]"
+            }`}
+            radius="full"
+            onPress={() => setActive(item.type)}
+          >
+            {item.name}
+          </Button>
+        ))}
+      </div>
+    ),
+    []
+  );
 
   return (
     <Drawer isOpen={isOpen} placement="bottom" onOpenChange={onOpenChange}>
       <DrawerContent>
         {(onClose) => (
           <>
-            <DrawerHeader className="flex flex-col gap-1">Redeem Smart Pods</DrawerHeader>
+            <DrawerHeader className="flex flex-col gap-1">
+              Redeem Smart Pods
+            </DrawerHeader>
             <DrawerBody>
               <p className="text-[#5F5F5F] text-[.8rem]">Flavor</p>
-              <div className="flex flex-wrap gap-[.5rem]">
-                {flavorList.map((flavor) => (
-                  <Button
-                    key={flavor.type}
-                    className={`bg-[#212122] text-[#E6EBEC] w-[calc(50%-0.25rem)] border border-solid ${flavorActive === flavor.type ? "border-[#FF4C33] text-[#FF4C33]" : "border-[#212122]"}`}
-                    radius="full"
-                    onPress={() => setFlavorActive(flavor.type)}
-                  >
-                    {flavor.name}
-                  </Button>
-                ))}
-              </div>
+              {renderOptionButtons(FLAVOR_LIST, flavorActive, setFlavorActive)}
               <p className="text-[#5F5F5F] text-[.8rem] mt-2">Nicotine Level</p>
-              <div className="flex flex-wrap gap-[.5rem]">
-                {nicotineList.map((flavor) => (
-                  <Button
-                    key={flavor.type}
-                    className={`bg-[#212122] text-[#E6EBEC] w-[calc(50%-0.25rem)] border border-solid ${nicotineActive === flavor.type ? "border-[#FF4C33] text-[#FF4C33]" : "border-[#212122]"}`}
-                    radius="full"
-                    onPress={() => setNicotineActive(flavor.type)}
-                  >
-                    {flavor.name}
-                  </Button>
-                ))}
-              </div>
+              {renderOptionButtons(NICOTINE_LIST, nicotineActive, setNicotineActive)}
               <p className="text-[#5F5F5F] text-[.8rem] mt-2">Quantity</p>
               <Input
                 className="w-full cal-input"
                 startContent={
-                  <button className="w-8 h-full text-[1rem]" onClick={handleDecrease}>-</button>
+                  <button
+                    className="w-8 h-full text-[1rem]"
+                    onClick={handleDecrease}
+                    type="button"
+                  >
+                    -
+                  </button>
                 }
                 endContent={
-                  <button className="w-8 h-full text-[1rem]" onClick={handleAdd}>+</button>
+                  <button
+                    className="w-8 h-full text-[1rem]"
+                    onClick={handleAdd}
+                    type="button"
+                  >
+                    +
+                  </button>
                 }
                 type="text"
                 size="lg"
                 value={quantity.toString()}
+                readOnly
               />
               <p className="flex items-center gap-1 text-[.8rem]">
-                <img src="/images/box.svg" alt="box" className="inline-block w-3 h-3" /> 
-                <span className='text-[#747474]'>Inventory:</span> 100
+                <img src="/images/box.svg" alt="box" className="inline-block w-3 h-3" />
+                <span className="text-[#747474]">Inventory:</span> {INVENTORY}
               </p>
             </DrawerBody>
             <DrawerFooter>
-              <Button radius="full" className="w-full bg-[#FF4C33] text-white h-[2.2rem]" onPress={onClose}>
+              <Button
+                radius="full"
+                className="w-full bg-[#FF4C33] text-white h-[2.2rem]"
+                onPress={onClose}
+              >
                 Confirm
               </Button>
             </DrawerFooter>
@@ -107,4 +130,4 @@ const DrawerModal = forwardRef<{ handleOpen: () => void }, {}>((props, ref) => {
 });
 
 DrawerModal.displayName = "DrawerModal";
-export default DrawerModal;
+export default memo(DrawerModal);
